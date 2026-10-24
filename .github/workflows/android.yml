@@ -1,0 +1,43 @@
+name: Android CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools platforms;android-35 platforms;android-36 build-tools;35.0.0 build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+      - name: Assemble library and sample apps
+        run: gradle :binder:assembleDebug :binder:testDebugUnitTest :sample:provider:assembleDebug :sample:client:assembleDebug :sample:client:assembleDebugAndroidTest
+      - name: Run cross-app Binder instrumentation test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          script: |
+            adb install sample/provider/build/outputs/apk/debug/provider-debug.apk
+            gradle :sample:client:connectedDebugAndroidTest || {\n              adb logcat -d -v time | grep -E 'McpBinderE2E|McpBinderProvider|AndroidRuntime|System.err' || true\n              exit 1\n            }
