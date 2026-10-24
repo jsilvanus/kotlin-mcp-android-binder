@@ -11,6 +11,7 @@ import io.modelcontextprotocol.kotlin.sdk.shared.TransportSendOptions
 import io.modelcontextprotocol.kotlin.sdk.types.JSONRPCMessage
 import io.modelcontextprotocol.kotlin.sdk.types.McpJson
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Channel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +41,23 @@ public class BinderMcpTransport(
     @Volatile private var messageHandler: (suspend (JSONRPCMessage) -> Unit)? = null
     @Volatile private var errorHandler: ((Throwable) -> Unit)? = null
     @Volatile private var closeHandler: (() -> Unit)? = null
+    private val handlerReady = CompletableDeferred<suspend (JSONRPCMessage) -> Unit>()
+    private val incomingMessages = Channel<String>(capacity = MAX_PENDING_MESSAGES)
+
+    init {
+        scope.launch {
+            for (json in incomingMessages) {
+                try {
+                    val handler = handlerReady.await()
+                    handler(McpJson.decodeFromString<JSONRPCMessage>(json))
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (failure: Exception) {
+                    reportError(failure)
+                }
+            }
+        }
+    }
 
     private val incoming = object : IMcpBinderCallback.Stub() {
         override fun onMessage(json: String) {
@@ -48,15 +66,9 @@ public class BinderMcpTransport(
                 closeFromPeer("Message size limit exceeded")
                 return
             }
-            scope.launch {
-                try {
-                    val message = McpJson.decodeFromString<JSONRPCMessage>(json)
-                    messageHandler?.invoke(message)
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (failure: Exception) {
-                    reportError(failure)
-                }
+            if (incomingMessages.trySend(json).isFailure) {
+                reportError(IllegalStateException("Inbound MCP message queue is full"))
+                closeFromPeer("Inbound message queue is full")
             }
         }
 
@@ -144,6 +156,7 @@ public class BinderMcpTransport(
         } finally {
             session = null
             releaseBinding()
+            incomingMessages.close()
             scope.cancel()
             closeHandler?.invoke()
         }
@@ -151,13 +164,17 @@ public class BinderMcpTransport(
 
     override fun onClose(block: () -> Unit) { closeHandler = block }
     override fun onError(block: (Throwable) -> Unit) { errorHandler = block }
-    override fun onMessage(block: suspend (JSONRPCMessage) -> Unit) { messageHandler = block }
+    override fun onMessage(block: suspend (JSONRPCMessage) -> Unit) {
+        messageHandler = block
+        handlerReady.complete(block)
+    }
 
     private fun closeFromPeer(reason: String) {
         if (!closed.compareAndSet(false, true)) return
         startDeferred?.completeExceptionally(IllegalStateException(reason))
         session = null
         releaseBinding()
+        incomingMessages.close()
         reportError(IllegalStateException(reason))
         closeHandler?.invoke()
         scope.cancel()
@@ -182,5 +199,6 @@ public class BinderMcpTransport(
     public companion object {
         public const val DEFAULT_MAX_MESSAGE_BYTES: Int = 256 * 1024
         public const val DEFAULT_CONNECT_TIMEOUT_MILLIS: Long = 10_000
+        internal const val MAX_PENDING_MESSAGES: Int = 64
     }
 }
