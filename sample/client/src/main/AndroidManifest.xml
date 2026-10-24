@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="dev.aidos.mcp.sample.permission.BIND_MCP_PROVIDER" />
+    <application
+        android:allowBackup="false"
+        android:label="MCP Binder Sample Client"
+        android:supportsRtl="true" />
+</manifest>
