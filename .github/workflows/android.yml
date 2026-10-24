@@ -40,4 +40,4 @@ jobs:
           profile: pixel_2
           script: |
             adb install sample/provider/build/outputs/apk/debug/provider-debug.apk
-            gradle :sample:client:connectedDebugAndroidTest
+            gradle :sample:client:connectedDebugAndroidTest || {\n              adb logcat -d -v time | grep -E 'McpBinderE2E|McpBinderProvider|AndroidRuntime|System.err' || true\n              exit 1\n            }
