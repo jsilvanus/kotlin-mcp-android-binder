@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+      # binder-core carries protocol, limits, admission and lifecycle logic; it runs against the real SDK.
+      - run: ./gradlew :binder-core:test --no-daemon
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+      # Compiles the AIDL, library and both sample apps. Cross-app behaviour is not tested here yet.
+      - run: ./gradlew :binder-android:testDebugUnitTest :binder-android:assembleDebug :samples:provider-app:assembleDebug :samples:client-app:assembleDebug --no-daemon
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk

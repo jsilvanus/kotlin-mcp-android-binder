@@ -4,36 +4,41 @@ This roadmap is intentionally milestone-based. A milestone is complete only when
 
 ## M0 — Repository and design baseline
 
-**Status: in progress**
+**Status: done** (see DESIGN.md)
 
 - [x] Create standalone repository.
 - [x] Select Apache-2.0.
-- [ ] Document scope, architecture, plan and roadmap.
-- [ ] Inspect the official Kotlin MCP SDK's current public Transport API and supported Android/JVM targets.
-- [ ] Record a compatibility decision: SDK version, minimum Android API, Kotlin/AGP versions.
-- [ ] Decide the public package name, module layout and whether the initial AIDL contract belongs in the library or in a host app.
+- [x] Document scope, architecture, plan and roadmap.
+- [x] Inspect the official Kotlin MCP SDK's current public Transport API and supported Android/JVM targets.
+- [x] Record a compatibility decision: SDK version, minimum Android API, Kotlin/AGP versions.
+- [x] Decide the public package name, module layout and whether the initial AIDL contract belongs in the library or in a host app.
 
 **Exit criteria:** a short design note resolves API compatibility and module structure before implementation begins.
 
 ## M1 — Minimal cross-app proof of concept
 
-- [ ] Create the Android library module and a minimal AIDL service contract.
-- [ ] Implement client-side and provider-side Binder adapters for MCP JSON-RPC messages.
-- [ ] Wire the adapters into the official SDK without copying or forking SDK code.
-- [ ] Add a sample provider exposing a harmless get_status tool.
-- [ ] Add a separate client app that discovers/connects to the provider and invokes the tool.
-- [ ] Demonstrate operation across separate application processes.
-- [ ] Add a basic happy-path integration test and build CI.
+**Status: code complete, not demonstrated on a device**
+
+- [x] Create the Android library module and a minimal AIDL service contract.
+- [x] Implement client-side and provider-side Binder adapters for MCP JSON-RPC messages.
+- [x] Wire the adapters into the official SDK without copying or forking SDK code.
+- [x] Add a sample provider exposing a harmless get_status tool.
+- [x] Add a separate client app that discovers/connects to the provider and invokes the tool.
+- [ ] Demonstrate operation across separate application processes (needs a device).
+- [x] Build CI, and a happy-path test over the real SDK (JVM and Robolectric, in-process).
+- [ ] Cross-app happy-path instrumentation test on an emulator or device.
 
 **Exit criteria:** MCP initialisation and one tool call succeed across two apps using Binder.
 
 ## M2 — Protocol correctness and lifecycle
 
-- [ ] Verify request/response correlation, notifications and concurrent requests.
+**Status: partly done in `binder-core` tests; device-level items open**
+
+- [x] Verify request/response correlation and concurrent requests (JVM).
 - [ ] Implement explicit timeouts and cancellation semantics.
 - [ ] Handle bind failure, disconnect, Binder death and provider/client process death.
-- [ ] Make close/reconnect paths idempotent and prevent resource leaks.
-- [ ] Bound in-flight requests and message sizes; clean up pending state on every exit path.
+- [x] Idempotent close, peer death surfaces as close (JVM). Reconnect and leaks on a device still open.
+- [x] Bound message size and inbound queue; closing on every terminal path (JVM). In-flight request cap and transport timeouts still open.
 - [ ] Add malformed-message, timeout, cancellation, reconnect and repeated-connect tests.
 
 **Exit criteria:** lifecycle failures produce bounded, documented errors and do not leak jobs, bindings or pending callbacks.
