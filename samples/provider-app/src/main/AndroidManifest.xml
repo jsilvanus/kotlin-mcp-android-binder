@@ -1,0 +1,12 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:label="MCP sample provider">
+        <!--
+          Exported so another app can bind, so access control is the in-code CallerPolicy
+          (package + signing certificate). A custom signature-level permission would add an OS-enforced
+          gate on top; see README.
+        -->
+        <service
+            android:name=".SampleProviderService"
+            android:exported="true" />
+    </application>
+</manifest>
