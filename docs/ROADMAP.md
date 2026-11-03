@@ -38,7 +38,7 @@ This roadmap is intentionally milestone-based. A milestone is complete only when
 - [ ] Implement explicit timeouts and cancellation semantics.
 - [ ] Handle bind failure, disconnect, Binder death and provider/client process death.
 - [x] Idempotent close, peer death surfaces as close (JVM). Reconnect and leaks on a device still open.
-- [x] Bound message size and inbound queue; closing on every terminal path (JVM). In-flight request cap and transport timeouts still open.
+- [x] Bound message size and inbound queue; closing on every terminal path (JVM). In-flight request cap done (`TransportLimits.maxInFlightRequests`, refused with a JSON-RPC error, JVM test); transport timeouts still open.
 - [ ] Add malformed-message, timeout, cancellation, reconnect and repeated-connect tests.
 
 **Exit criteria:** lifecycle failures produce bounded, documented errors and do not leak jobs, bindings or pending callbacks.
