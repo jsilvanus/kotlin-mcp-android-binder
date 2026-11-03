@@ -11,6 +11,14 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import io.modelcontextprotocol.kotlin.sdk.types.JSONRPCError
+import io.modelcontextprotocol.kotlin.sdk.types.JSONRPCNotification
+import io.modelcontextprotocol.kotlin.sdk.types.JSONRPCRequest
+import io.modelcontextprotocol.kotlin.sdk.types.JSONRPCResponse
+import io.modelcontextprotocol.kotlin.sdk.types.RPCError
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** Limits that keep a misbehaving peer from exhausting memory. Binder's hard cap is about 1 MiB per process. */
@@ -19,9 +27,14 @@ public data class TransportLimits(
     val maxFrameBytes: Int = 512 * 1024,
     /** Frames received but not yet handed to the SDK. Overflow closes the transport (fail closed). */
     val maxQueuedInbound: Int = 64,
+    /**
+     * Inbound requests the peer may have unanswered at once. A request over the cap is answered with a
+     * JSON-RPC error and never reaches the SDK; the link stays open and earlier requests still complete.
+     */
+    val maxInFlightRequests: Int = 32,
 ) {
     init {
-        require(maxFrameBytes > 0 && maxQueuedInbound > 0) { "limits must be positive" }
+        require(maxFrameBytes > 0 && maxQueuedInbound > 0 && maxInFlightRequests > 0) { "limits must be positive" }
     }
 }
 
@@ -46,6 +59,9 @@ public class BinderTransport(
     private val inbound = Channel<ByteArray>(limits.maxQueuedInbound)
     private val started = AtomicBoolean(false)
     private val closed = AtomicBoolean(false)
+
+    /** Ids of inbound requests the SDK has not answered yet, by `RequestId.toString()`. */
+    private val inFlight = ConcurrentHashMap.newKeySet<String>()
 
     init {
         // Listen from construction, not from start(): the peer may send the moment it is
@@ -79,6 +95,7 @@ public class BinderTransport(
                     fail(e)
                     return@launch
                 }
+                if (!admit(message)) continue
                 try {
                     _onMessage(message)
                 } catch (e: Exception) {
@@ -96,7 +113,40 @@ public class BinderTransport(
         if (frame.size > limits.maxFrameBytes) {
             throw TransportLimitException("outbound frame of ${frame.size} bytes exceeds ${limits.maxFrameBytes}")
         }
+        // The SDK answering (or failing) a request frees its slot.
+        when (message) {
+            is JSONRPCResponse -> inFlight.remove(message.id.toString())
+            is JSONRPCError -> inFlight.remove(message.id.toString())
+            else -> Unit
+        }
         link.send(frame)
+    }
+
+    /**
+     * Applies [TransportLimits.maxInFlightRequests] to one inbound message. Returns false when the
+     * message was consumed here (refused, or a cancellation that only frees bookkeeping is still passed on).
+     */
+    private fun admit(message: JSONRPCMessage): Boolean {
+        when (message) {
+            is JSONRPCRequest -> {
+                if (inFlight.size >= limits.maxInFlightRequests) {
+                    val refusal = JSONRPCError(
+                        message.id,
+                        RPCError(OVERLOADED, "too many in-flight requests (limit ${limits.maxInFlightRequests})"),
+                    )
+                    runCatching { link.send(serializeMessage(refusal).encodeToByteArray()) }
+                    return false
+                }
+                inFlight.add(message.id.toString())
+            }
+            is JSONRPCNotification -> if (message.method == "notifications/cancelled") {
+                // A cancelled request may never be answered; do not hold its slot until the link closes.
+                val target = ((message.params as? JsonObject)?.get("requestId") as? JsonPrimitive)?.content
+                if (target != null) inFlight.remove(target)
+            }
+            else -> Unit
+        }
+        return true
     }
 
     override suspend fun close() {
@@ -111,8 +161,12 @@ public class BinderTransport(
         if (!closed.compareAndSet(false, true)) return
         if (cause != null) runCatching { _onError(cause) }
         inbound.close()
+        inFlight.clear()
         if (notifyPeer) runCatching { link.close() }
         scope.cancel()
         invokeOnCloseCallback()
     }
 }
+
+/** JSON-RPC server-defined error code for "too many requests in flight" (the -32000 range is implementation defined). */
+private const val OVERLOADED = -32000

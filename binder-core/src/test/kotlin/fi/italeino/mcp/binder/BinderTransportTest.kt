@@ -172,4 +172,32 @@ class BinderTransportTest {
         withTimeout(5_000) { while (host.activeSessions != 0) kotlinx.coroutines.delay(5) }
         host.shutdown()
     }
+
+    @Test
+    fun `requests over the in-flight cap are refused while earlier ones still complete`() = runBlocking {
+        val gate = CompletableDeferred<Unit>()
+        val (client, host, clientEnd) = connected(limits = TransportLimits(maxInFlightRequests = 2), release = gate)
+        withTimeout(10_000) {
+            val first = async { client.callTool("slow", emptyMap()) }
+            val second = async { client.callTool("slow", emptyMap()) }
+            // Both must have crossed the link before the third arrives.
+            while (clientEnd.sent.get() < 2 + HANDSHAKE_FRAMES) kotlinx.coroutines.delay(10)
+            val third = runCatching { client.callTool("slow", emptyMap()) }
+            assertTrue(third.isFailure, "the third concurrent request must be refused")
+            assertTrue(third.exceptionOrNull()?.message.orEmpty().contains("in-flight"), "error: ${third.exceptionOrNull()}")
+
+            gate.complete(Unit)
+            assertEquals("done", (first.await().content.single() as TextContent).text)
+            assertEquals("done", (second.await().content.single() as TextContent).text)
+            // The slots are free again and the link survived the refusal.
+            assertEquals("ok", (client.callTool("get_status", emptyMap()).content.single() as TextContent).text)
+        }
+        client.close()
+        host.shutdown()
+    }
+
+    private companion object {
+        /** initialize request, initialized notification, tools/list-free setup: frames sent before any tool call. */
+        const val HANDSHAKE_FRAMES = 2
+    }
 }
