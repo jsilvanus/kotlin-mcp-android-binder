@@ -1,0 +1,100 @@
+public final class fi/italeino/mcp/binder/BinderTransport : io/modelcontextprotocol/kotlin/sdk/shared/AbstractTransport {
+	public fun <init> (Lfi/italeino/mcp/binder/Link;Lfi/italeino/mcp/binder/TransportLimits;)V
+	public synthetic fun <init> (Lfi/italeino/mcp/binder/Link;Lfi/italeino/mcp/binder/TransportLimits;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun close (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun send (Lio/modelcontextprotocol/kotlin/sdk/types/JSONRPCMessage;Lio/modelcontextprotocol/kotlin/sdk/shared/TransportSendOptions;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun start (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class fi/italeino/mcp/binder/CallerIdentity {
+	public fun <init> (ILjava/util/Set;Ljava/util/Set;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/util/Set;
+	public final fun component3 ()Ljava/util/Set;
+	public final fun copy (ILjava/util/Set;Ljava/util/Set;)Lfi/italeino/mcp/binder/CallerIdentity;
+	public static synthetic fun copy$default (Lfi/italeino/mcp/binder/CallerIdentity;ILjava/util/Set;Ljava/util/Set;ILjava/lang/Object;)Lfi/italeino/mcp/binder/CallerIdentity;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPackages ()Ljava/util/Set;
+	public final fun getSigningCertSha256 ()Ljava/util/Set;
+	public final fun getUid ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class fi/italeino/mcp/binder/CallerPolicy {
+	public static final field Companion Lfi/italeino/mcp/binder/CallerPolicy$Companion;
+	public abstract fun isAllowed (Lfi/italeino/mcp/binder/CallerIdentity;)Z
+}
+
+public final class fi/italeino/mcp/binder/CallerPolicy$Companion {
+	public final fun allowlist (Ljava/util/Map;)Lfi/italeino/mcp/binder/CallerPolicy;
+	public final fun getDenyAll ()Lfi/italeino/mcp/binder/CallerPolicy;
+}
+
+public final class fi/italeino/mcp/binder/ConnectionRefusedException : java/lang/SecurityException {
+	public fun <init> (Ljava/lang/String;)V
+}
+
+public abstract interface class fi/italeino/mcp/binder/Link {
+	public abstract fun close ()V
+	public fun getBlocksWhenSaturated ()Z
+	public abstract fun open (Lfi/italeino/mcp/binder/LinkListener;)V
+	public abstract fun send ([B)V
+}
+
+public final class fi/italeino/mcp/binder/Link$DefaultImpls {
+	public static fun getBlocksWhenSaturated (Lfi/italeino/mcp/binder/Link;)Z
+}
+
+public final class fi/italeino/mcp/binder/LinkClosedException : java/lang/Exception {
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+}
+
+public abstract interface class fi/italeino/mcp/binder/LinkListener {
+	public abstract fun onClosed (Ljava/lang/Throwable;)V
+	public abstract fun onFrame ([B)V
+}
+
+public final class fi/italeino/mcp/binder/ProviderHost {
+	public fun <init> (Lfi/italeino/mcp/binder/CallerPolicy;Lfi/italeino/mcp/binder/TransportLimits;ILkotlin/jvm/functions/Function1;)V
+	public synthetic fun <init> (Lfi/italeino/mcp/binder/CallerPolicy;Lfi/italeino/mcp/binder/TransportLimits;ILkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun accept (Lfi/italeino/mcp/binder/CallerIdentity;Lfi/italeino/mcp/binder/Link;)V
+	public final fun getActiveSessions ()I
+	public final fun shutdown (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class fi/italeino/mcp/binder/StreamLink : fi/italeino/mcp/binder/Link {
+	public fun <init> (Ljava/io/InputStream;Ljava/io/OutputStream;ILkotlin/jvm/functions/Function0;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/io/InputStream;Ljava/io/OutputStream;ILkotlin/jvm/functions/Function0;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun close ()V
+	public fun getBlocksWhenSaturated ()Z
+	public fun open (Lfi/italeino/mcp/binder/LinkListener;)V
+	public final fun peerGone (Ljava/lang/Throwable;)V
+	public static synthetic fun peerGone$default (Lfi/italeino/mcp/binder/StreamLink;Ljava/lang/Throwable;ILjava/lang/Object;)V
+	public fun send ([B)V
+}
+
+public final class fi/italeino/mcp/binder/TransportLimitException : java/lang/Exception {
+	public fun <init> (Ljava/lang/String;)V
+}
+
+public final class fi/italeino/mcp/binder/TransportLimits {
+	public fun <init> ()V
+	public fun <init> (IIIJ)V
+	public synthetic fun <init> (IIIJILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun component3 ()I
+	public final fun component4 ()J
+	public final fun copy (IIIJ)Lfi/italeino/mcp/binder/TransportLimits;
+	public static synthetic fun copy$default (Lfi/italeino/mcp/binder/TransportLimits;IIIJILjava/lang/Object;)Lfi/italeino/mcp/binder/TransportLimits;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMaxFrameBytes ()I
+	public final fun getMaxInFlightRequests ()I
+	public final fun getMaxQueuedInbound ()I
+	public final fun getSendTimeoutMillis ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
