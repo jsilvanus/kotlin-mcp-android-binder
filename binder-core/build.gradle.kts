@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm")
+    `maven-publish`
 }
 
 val mcpSdkVersion = "0.15.0"
@@ -28,4 +29,15 @@ tasks.test {
 
 tasks.withType<JavaCompile> {
     options.release.set(17)
+}
+
+java { withSourcesJar() }
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            artifactId = "binder-core"
+            from(components["java"])
+        }
+    }
 }
