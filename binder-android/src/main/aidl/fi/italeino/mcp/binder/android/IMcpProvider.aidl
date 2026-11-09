@@ -1,11 +1,17 @@
 package fi.italeino.mcp.binder.android;
 
-import fi.italeino.mcp.binder.android.IMcpEndpoint;
+import android.os.ParcelFileDescriptor;
 
+/**
+ * Binder only bootstraps the session. The MCP messages themselves travel over a socket whose other
+ * end is returned here, so they are not subject to the ~1 MiB transaction limit and get kernel
+ * backpressure. Both sides detect the peer going away from socket EOF (the kernel closes a dead
+ * process's descriptors) and, on the client, from the death of this binder.
+ */
 interface IMcpProvider {
     /**
-     * Opens a session. [client] is where the provider sends its messages; the returned endpoint is
-     * where the client sends its own. Throws SecurityException if the caller is not admitted.
+     * Opens a session. Returns the client's end of a connected socket pair carrying length-prefixed
+     * MCP JSON-RPC frames. Throws SecurityException if the caller is not admitted.
      */
-    IMcpEndpoint connect(IMcpEndpoint client);
+    ParcelFileDescriptor connect();
 }

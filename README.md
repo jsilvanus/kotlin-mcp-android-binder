@@ -17,7 +17,9 @@ This project will implement a transport adapter around the official Kotlin MCP S
 ## Layout
 
 - `binder-core`: Android-free transport, limits, caller policy, provider host. `./gradlew :binder-core:test`
-- `binder-android`: AIDL, `McpProviderService`, `McpBinderClient`. Needs an Android SDK (`ANDROID_HOME`).
+- `binder-android`: AIDL bootstrap, `McpProviderService`, `McpBinderClient`, `ProviderTrust`. Needs an Android SDK (`ANDROID_HOME`). Messages travel over a socket pair handed over Binder, so there is no 1 MiB limit.
+
+Device tests (emulator or device, JDK 17 or 21; JDK 25 fails D8): `./gradlew :samples:provider-app:installDebug :samples:client-app:connectedDebugAndroidTest`.
 - `samples/provider-app`, `samples/client-app`: the cross-app demo. Install both (same signing key) and press the button in the client.
 
 ## Compatibility

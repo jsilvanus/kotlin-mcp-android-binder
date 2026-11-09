@@ -8,5 +8,9 @@
         <service
             android:name=".SampleProviderService"
             android:exported="true" />
+        <!-- Refuses every caller; lets a device test prove the refusal path with real identities. -->
+        <service
+            android:name=".SampleDenyingService"
+            android:exported="true" />
     </application>
 </manifest>

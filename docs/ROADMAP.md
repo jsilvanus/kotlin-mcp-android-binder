@@ -17,41 +17,43 @@ This roadmap is intentionally milestone-based. A milestone is complete only when
 
 ## M1 — Minimal cross-app proof of concept
 
-**Status: code complete, not demonstrated on a device**
+**Status: done** (demonstrated on an API 36 emulator across two apps)
 
 - [x] Create the Android library module and a minimal AIDL service contract.
 - [x] Implement client-side and provider-side Binder adapters for MCP JSON-RPC messages.
 - [x] Wire the adapters into the official SDK without copying or forking SDK code.
 - [x] Add a sample provider exposing a harmless get_status tool.
 - [x] Add a separate client app that discovers/connects to the provider and invokes the tool.
-- [ ] Demonstrate operation across separate application processes (needs a device).
+- [x] Demonstrate operation across separate application processes (emulator, API 36).
 - [x] Build CI, and a happy-path test over the real SDK (JVM and Robolectric, in-process).
-- [ ] Cross-app happy-path instrumentation test on an emulator or device.
+- [x] Cross-app instrumentation tests on an emulator (`samples:client-app` `connectedDebugAndroidTest`).
 
 **Exit criteria:** MCP initialisation and one tool call succeed across two apps using Binder.
 
 ## M2 — Protocol correctness and lifecycle
 
-**Status: partly done in `binder-core` tests; device-level items open**
+**Status: done on API 36; other API levels untested**
 
 - [x] Verify request/response correlation and concurrent requests (JVM).
-- [ ] Implement explicit timeouts and cancellation semantics.
-- [ ] Handle bind failure, disconnect, Binder death and provider/client process death.
-- [x] Idempotent close, peer death surfaces as close (JVM). Reconnect and leaks on a device still open.
-- [x] Bound message size and inbound queue; closing on every terminal path (JVM). In-flight request cap done (`TransportLimits.maxInFlightRequests`, refused with a JSON-RPC error, JVM test); transport timeouts still open.
-- [ ] Add malformed-message, timeout, cancellation, reconnect and repeated-connect tests.
+- [x] Implement explicit timeouts and cancellation semantics (connect timeout, send timeout, SDK per-request timeout and cancellation).
+- [x] Handle bind failure, disconnect, Binder death and provider/client process death.
+- [x] Idempotent close, peer death surfaces as close (JVM). Reconnect on a device: done (25 repeated connects, reconnect after provider kill).
+- [x] Bound message size and inbound queue; closing on every terminal path (JVM). In-flight request cap done (`TransportLimits.maxInFlightRequests`, refused with a JSON-RPC error, JVM test); send timeout done. Frame limit is now 16 MiB over a socket instead of Binder's ~1 MiB.
+- [x] Add malformed-message, timeout, reconnect and repeated-connect tests. (Cancellation relies on the SDK.)
 
 **Exit criteria:** lifecycle failures produce bounded, documented errors and do not leak jobs, bindings or pending callbacks.
 
 ## M3 — Security hardening
 
-- [ ] Define the supported caller-authentication model and threat model.
-- [ ] Enforce explicit service targeting and safe exported-service configuration.
-- [ ] Verify Binder caller identity and package/signature association where applicable.
-- [ ] Make authorization deny-by-default for protected providers.
-- [ ] Define provider-level authorization for sensitive tools and user-confirmation requirements.
-- [ ] Add tests for unauthorized apps, spoofed/mismatched identity, malformed input and callback failure.
-- [ ] Review logs to ensure sensitive tool arguments and results are not emitted by default.
+**Status: done for the documented model; see DESIGN.md. Not done: a real third-party signer as denied caller, API levels below 36.**
+
+- [x] Define the supported caller-authentication model and threat model.
+- [x] Enforce explicit service targeting and safe exported-service configuration.
+- [x] Verify Binder caller identity and package/signature association where applicable.
+- [x] Make authorization deny-by-default for protected providers.
+- [x] Define provider-level authorization for sensitive tools and user-confirmation requirements.
+- [x] Add tests for unauthorized apps, spoofed/mismatched identity, malformed input and callback failure.
+- [x] Review logs to ensure sensitive tool arguments and results are not emitted by default.
 
 **Exit criteria:** documented security model and automated negative tests; no reliance on a normal-level permission as the only security boundary.
 
