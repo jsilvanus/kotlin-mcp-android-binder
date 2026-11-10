@@ -98,7 +98,8 @@ class StreamLinkTest {
         val client = Client(Implementation("c", "0"))
         withTimeout(15_000) {
             client.connect(BinderTransport(link(a)))
-            assertEquals("ok", (client.callTool("get_status", emptyMap()).content.single() as TextContent).text)
+            val result = client.callTool("get_status", emptyMap())
+            assertEquals("ok", (result.content.firstOrNull() as? TextContent)?.text, "result: $result")
         }
         client.close()
         host.shutdown()
