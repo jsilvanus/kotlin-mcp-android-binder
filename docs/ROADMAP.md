@@ -59,22 +59,26 @@ This roadmap is intentionally milestone-based. A milestone is complete only when
 
 ## M4 — API and developer experience
 
-- [ ] Stabilize the public Kotlin API and error model.
-- [ ] Provide minimal setup examples for provider and consumer apps.
-- [ ] Document manifest/service declarations, permissions, API-level restrictions and process lifecycle.
-- [ ] Add a sample with a side-effect-free tool and explain how providers should protect side-effecting tools.
-- [ ] Document limitations and compatibility matrix.
-- [ ] Add API compatibility checks if appropriate.
+**Status: done** (docs/INTEGRATION.md, API dumps checked in CI).
+
+- [x] Stabilize the public Kotlin API and error model.
+- [x] Provide minimal setup examples for provider and consumer apps.
+- [x] Document manifest/service declarations, permissions, API-level restrictions and process lifecycle.
+- [x] Add a sample with a side-effect-free tool and explain how providers should protect side-effecting tools.
+- [x] Document limitations and compatibility matrix.
+- [x] Add API compatibility checks if appropriate.
 
 **Exit criteria:** a developer unfamiliar with the repository can integrate a provider and client from the documentation.
 
 ## M5 — Release candidate
 
-- [ ] Run library unit tests and Android integration/instrumentation tests in CI.
+**Status: mostly done; the API 28 and 34 CI device jobs have not run yet (they need a push to GitHub).**
+
+- [x] Run library unit tests and Android integration/instrumentation tests in CI.
 - [ ] Test on at least the minimum supported API and a current Android API.
-- [ ] Review dependency licences and notices.
-- [ ] Audit queue bounds, cleanup, concurrency and security-sensitive code.
-- [ ] Publish a pre-release artifact or documented local build.
+- [x] Review dependency licences and notices.
+- [x] Audit queue bounds, cleanup, concurrency and security-sensitive code.
+- [x] Publish a pre-release artifact or documented local build.
 - [ ] Tag a release candidate only after all M1–M4 exit criteria pass.
 
 **Exit criteria:** reproducible build, green CI, documented limitations and a reviewable release candidate.

@@ -2,12 +2,14 @@
 
 An Android-specific Binder IPC transport for the official Kotlin Model Context Protocol (MCP) SDK. The goal is to let separate Android apps exchange standard MCP messages without running a local HTTP server.
 
-**Status:** M1 proof of concept in code, **experimental and not production-ready**. The JVM core and an in-process Android wiring test pass; no cross-process run on a device has happened yet.
+**Status:** pre-release, **experimental**. Cross-app tests (large results, provider death, refusal, wrong pin, reconnect) pass on an API 36 emulator; API 28 and 34 run in CI. See the [integration guide](docs/INTEGRATION.md).
 
 ## Documentation
 
 - [Project plan](docs/PLAN.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Integration guide](docs/INTEGRATION.md)
+- [Dependencies and licences](docs/DEPENDENCIES.md)
 - [Design note: compatibility, modules, wire contract](docs/DESIGN.md)
 
 ## Direction
