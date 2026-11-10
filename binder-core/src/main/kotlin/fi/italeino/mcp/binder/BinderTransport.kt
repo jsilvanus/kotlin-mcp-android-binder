@@ -10,7 +10,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.trySendBlocking
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import io.modelcontextprotocol.kotlin.sdk.types.JSONRPCError
 import io.modelcontextprotocol.kotlin.sdk.types.JSONRPCNotification
 import io.modelcontextprotocol.kotlin.sdk.types.JSONRPCRequest
@@ -21,10 +24,10 @@ import kotlinx.serialization.json.JsonPrimitive
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** Limits that keep a misbehaving peer from exhausting memory. Binder's hard cap is about 1 MiB per process. */
+/** Limits that keep a misbehaving peer from exhausting memory. */
 public data class TransportLimits(
-    /** Largest single JSON-RPC message in either direction, in UTF-8 bytes. Chunking is not implemented. */
-    val maxFrameBytes: Int = 512 * 1024,
+    /** Largest single JSON-RPC message in either direction, in UTF-8 bytes. Stream links have no Binder-style 1 MiB cap. */
+    val maxFrameBytes: Int = 16 * 1024 * 1024,
     /** Frames received but not yet handed to the SDK. Overflow closes the transport (fail closed). */
     val maxQueuedInbound: Int = 64,
     /**
@@ -32,9 +35,14 @@ public data class TransportLimits(
      * JSON-RPC error and never reaches the SDK; the link stays open and earlier requests still complete.
      */
     val maxInFlightRequests: Int = 32,
+    /**
+     * A send that has not completed after this long means the peer stopped reading (a full socket
+     * buffer blocks the writer). The link is closed, which fails the send and every pending request.
+     */
+    val sendTimeoutMillis: Long = 30_000,
 ) {
     init {
-        require(maxFrameBytes > 0 && maxQueuedInbound > 0 && maxInFlightRequests > 0) { "limits must be positive" }
+        require(maxFrameBytes > 0 && maxQueuedInbound > 0 && maxInFlightRequests > 0 && sendTimeoutMillis > 0) { "limits must be positive" }
     }
 }
 
@@ -72,6 +80,10 @@ public class BinderTransport(
                 if (closed.get()) return
                 if (frame.size > limits.maxFrameBytes) {
                     fail(TransportLimitException("inbound frame of ${frame.size} bytes exceeds ${limits.maxFrameBytes}"))
+                } else if (link.blocksWhenSaturated) {
+                    // Dedicated reader thread: waiting here stops it reading, which fills the socket
+                    // buffer and blocks the peer's writer. Closing the channel releases us.
+                    inbound.trySendBlocking(frame)
                 } else if (!inbound.trySend(frame).isSuccess) {
                     fail(TransportLimitException("inbound queue full (${limits.maxQueuedInbound})"))
                 }
@@ -109,7 +121,7 @@ public class BinderTransport(
     override suspend fun send(message: JSONRPCMessage, options: TransportSendOptions?) {
         if (closed.get()) throw LinkClosedException("transport is closed")
         val frame = serializeMessage(message).encodeToByteArray()
-        // Refuse locally: an oversize transaction would fail opaquely inside Binder.
+        // Refuse locally with a clear error rather than let the peer reject it.
         if (frame.size > limits.maxFrameBytes) {
             throw TransportLimitException("outbound frame of ${frame.size} bytes exceeds ${limits.maxFrameBytes}")
         }
@@ -119,7 +131,16 @@ public class BinderTransport(
             is JSONRPCError -> inFlight.remove(message.id.toString())
             else -> Unit
         }
-        link.send(frame)
+        // Blocking socket write: keep it off the SDK's dispatcher, and cut the link if the peer stalls.
+        val watchdog = scope.launch {
+            delay(limits.sendTimeoutMillis)
+            fail(TransportLimitException("send blocked for ${limits.sendTimeoutMillis} ms; peer is not reading"))
+        }
+        try {
+            withContext(Dispatchers.IO) { link.send(frame) }
+        } finally {
+            watchdog.cancel()
+        }
     }
 
     /**

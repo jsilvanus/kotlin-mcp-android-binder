@@ -1,6 +1,7 @@
 package fi.italeino.mcp.binder.android
 
 import android.os.Binder
+import android.os.ParcelFileDescriptor
 import fi.italeino.mcp.binder.CallerIdentity
 import fi.italeino.mcp.binder.ProviderHost
 
@@ -8,18 +9,19 @@ import fi.italeino.mcp.binder.ProviderHost
 internal class ProviderBinder(
     private val host: () -> ProviderHost,
     private val identityOf: (uid: Int) -> CallerIdentity,
+    private val maxFrameBytes: Int,
 ) : IMcpProvider.Stub() {
-    override fun connect(client: IMcpEndpoint): IMcpEndpoint {
+    override fun connect(): ParcelFileDescriptor {
         // Must run on the transaction thread: getCallingUid() is meaningless anywhere else.
         val caller = identityOf(Binder.getCallingUid())
-        val local = LocalEndpoint()
-        val link = BinderLink(local, client)
+        val (providerEnd, clientEnd) = ParcelFileDescriptor.createSocketPair().let { it[0] to it[1] }
         try {
-            host().accept(caller, link)
+            host().accept(caller, socketLink(providerEnd, maxFrameBytes, "mcp-provider-${caller.uid}"))
         } catch (e: Exception) {
-            link.close()
+            runCatching { providerEnd.close() }
+            runCatching { clientEnd.close() }
             throw e // ConnectionRefusedException is a SecurityException, which Binder carries to the caller
         }
-        return local
+        return clientEnd // closed by Binder once written to the reply
     }
 }

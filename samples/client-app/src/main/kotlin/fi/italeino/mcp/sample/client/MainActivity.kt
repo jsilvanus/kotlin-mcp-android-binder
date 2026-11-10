@@ -7,6 +7,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import fi.italeino.mcp.binder.android.McpBinderClient
+import fi.italeino.mcp.binder.android.ProviderTrust
 import io.modelcontextprotocol.kotlin.sdk.client.Client
 import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
@@ -23,7 +24,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         val output = TextView(this).apply { text = "Press the button to call get_status in the provider app." }
         val button = Button(this).apply { text = "Call get_status" }
-        setContentView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; addView(button); addView(output) })
+        setContentView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; fitsSystemWindows = true; addView(button); addView(output) })
         button.setOnClickListener {
             scope.launch { output.text = runCatching { callProvider() }.getOrElse { "failed: $it" } }
         }
@@ -33,7 +34,7 @@ class MainActivity : Activity() {
         withTimeout(15_000) {
             val provider = ComponentName("fi.italeino.mcp.sample.provider", "fi.italeino.mcp.sample.provider.SampleProviderService")
             val client = Client(Implementation("sample-client", "0.0.1"))
-            client.connect(McpBinderClient.connect(this@MainActivity, provider))
+            client.connect(McpBinderClient.connect(this@MainActivity, provider, ProviderTrust.sameSignatureAs(this@MainActivity, provider.packageName)))
             try {
                 val result = client.callTool("get_status", emptyMap())
                 (result.content.firstOrNull() as? TextContent)?.text ?: "no text"

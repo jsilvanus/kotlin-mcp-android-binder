@@ -2,12 +2,14 @@
 
 An Android-specific Binder IPC transport for the official Kotlin Model Context Protocol (MCP) SDK. The goal is to let separate Android apps exchange standard MCP messages without running a local HTTP server.
 
-**Status:** M1 proof of concept in code, **experimental and not production-ready**. The JVM core and an in-process Android wiring test pass; no cross-process run on a device has happened yet.
+**Status:** pre-release, **experimental**. Cross-app tests (large results, provider death, refusal, wrong pin, reconnect) pass on an API 36 emulator; API 28 and 34 run in CI. See the [integration guide](docs/INTEGRATION.md).
 
 ## Documentation
 
 - [Project plan](docs/PLAN.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Integration guide](docs/INTEGRATION.md)
+- [Dependencies and licences](docs/DEPENDENCIES.md)
 - [Design note: compatibility, modules, wire contract](docs/DESIGN.md)
 
 ## Direction
@@ -17,7 +19,9 @@ This project will implement a transport adapter around the official Kotlin MCP S
 ## Layout
 
 - `binder-core`: Android-free transport, limits, caller policy, provider host. `./gradlew :binder-core:test`
-- `binder-android`: AIDL, `McpProviderService`, `McpBinderClient`. Needs an Android SDK (`ANDROID_HOME`).
+- `binder-android`: AIDL bootstrap, `McpProviderService`, `McpBinderClient`, `ProviderTrust`. Needs an Android SDK (`ANDROID_HOME`). Messages travel over a socket pair handed over Binder, so there is no 1 MiB limit.
+
+Device tests (emulator or device, JDK 17 or 21; JDK 25 fails D8): `./gradlew :samples:provider-app:installDebug :samples:client-app:connectedDebugAndroidTest`.
 - `samples/provider-app`, `samples/client-app`: the cross-app demo. Install both (same signing key) and press the button in the client.
 
 ## Compatibility

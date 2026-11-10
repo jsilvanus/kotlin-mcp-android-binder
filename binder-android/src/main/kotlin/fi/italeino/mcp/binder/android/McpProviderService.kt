@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.IBinder
 import fi.italeino.mcp.binder.CallerIdentity
 import fi.italeino.mcp.binder.ProviderHost
+import fi.italeino.mcp.binder.TransportLimits
 import java.security.MessageDigest
 
 /**
@@ -18,7 +19,10 @@ import java.security.MessageDigest
 public abstract class McpProviderService : Service() {
     protected abstract val host: ProviderHost
 
-    private val provider = ProviderBinder(this::host, ::callerIdentity)
+    /** Largest accepted message. Stream links have no Binder size cap, but memory is still bounded. */
+    protected open val maxFrameBytes: Int get() = TransportLimits().maxFrameBytes
+
+    private val provider by lazy { ProviderBinder(this::host, ::callerIdentity, maxFrameBytes) }
 
     override fun onBind(intent: Intent?): IBinder = provider
 

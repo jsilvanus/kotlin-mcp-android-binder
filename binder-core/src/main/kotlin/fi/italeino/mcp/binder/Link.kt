@@ -22,6 +22,13 @@ public interface Link {
 
     /** Idempotent. Releases the link and notifies the peer on a best-effort basis. */
     public fun close()
+
+    /**
+     * True if [LinkListener.onFrame] may block to apply backpressure (stream links, which have a
+     * dedicated reader thread). False if it runs on a thread that must not block, so a full inbound
+     * queue closes the transport instead (Binder callbacks).
+     */
+    public val blocksWhenSaturated: Boolean get() = false
 }
 
 public interface LinkListener {
