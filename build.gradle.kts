@@ -1,3 +1,6 @@
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.publish.maven.MavenPublication
+
 plugins {
     kotlin("jvm") version "2.4.0" apply false
     kotlin("android") version "2.4.0" apply false
@@ -15,5 +18,42 @@ apiValidation {
 
 allprojects {
     group = "fi.italeino.mcp"
-    version = "0.1.0-SNAPSHOT"
+    // CI passes -PbinderVersion=0.1.0-build.N+sha on every push to main. Local builds keep SNAPSHOT.
+    version = (findProperty("binderVersion") as String?) ?: "0.1.0-SNAPSHOT"
+}
+
+subprojects {
+    plugins.withId("maven-publish") {
+        extensions.configure<PublishingExtension> {
+            repositories {
+                maven {
+                    name = "GitHubPackages"
+                    url = uri("https://maven.pkg.github.com/jsilvanus/kotlin-mcp-android-binder")
+                    credentials {
+                        username = System.getenv("GITHUB_ACTOR") ?: "token"
+                        password = System.getenv("GITHUB_TOKEN") ?: ""
+                    }
+                }
+            }
+        }
+        extensions.configure<PublishingExtension> {
+            publications.withType<MavenPublication>().configureEach {
+                pom {
+                    name.set(artifactId)
+                    description.set("Binder transport for standard MCP between Android apps (fi.italeino.mcp).")
+                    url.set("https://github.com/jsilvanus/kotlin-mcp-android-binder")
+                    licenses {
+                        license {
+                            name.set("Apache License 2.0")
+                            url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                        }
+                    }
+                    scm {
+                        url.set("https://github.com/jsilvanus/kotlin-mcp-android-binder")
+                        connection.set("scm:git:https://github.com/jsilvanus/kotlin-mcp-android-binder.git")
+                    }
+                }
+            }
+        }
+    }
 }
