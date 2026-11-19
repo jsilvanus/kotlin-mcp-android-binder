@@ -4,7 +4,27 @@ How to serve MCP tools to other apps (provider) and call another app's tools (cl
 
 ## Provider app
 
-1. Depend on `fi.italeino.mcp:binder-android` (publish locally with `./gradlew publishToMavenLocal` until a registry release exists).
+1. Depend on `fi.italeino.mcp:binder-android` from GitHub Packages. Add the repository to your `settings.gradle.kts`, filtered to this group:
+
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        maven {
+            url = uri("https://maven.pkg.github.com/jsilvanus/kotlin-mcp-android-binder")
+            credentials {
+                username = providers.gradleProperty("gpr.user").orElse(providers.environmentVariable("GITHUB_ACTOR")).orNull ?: "token"
+                password = providers.gradleProperty("gpr.key").orElse(providers.environmentVariable("GITHUB_TOKEN")).orNull ?: ""
+            }
+            content { includeGroup("fi.italeino.mcp") }
+        }
+    }
+}
+```
+
+Pin an exact version. Every push to main publishes `0.1.0-build.<run>+<sha8>`; the latest one is listed on the repository's Packages page and in the publish job summary. A token is needed even to read the public packages: see [Credentials](#credentials).
+
+   To work on the binder and a consumer at the same time, point the consumer at a sibling checkout instead: `-PmcpBinderDir=../kotlin-mcp-android-binder` (Gradle composite build, no token needed).
+
 2. Subclass `McpProviderService` and supply a `ProviderHost`:
 
 ```kotlin
@@ -38,6 +58,15 @@ val client = Client(Implementation("my-client", "1.0")).also { it.connect(transp
 - Android 11+ needs `<queries><package android:name="com.example.provider"/></queries>` in the client manifest.
 - `ProviderTrust` has no default. `ProviderTrust.AnyProvider` exists for development only.
 - To read a provider's certificate digest when the user adopts it: `SigningCerts.of(packageManager, packageName)`.
+
+## Credentials
+
+GitHub Packages' Maven registry needs a token even to read a public package. In CI the workflow's own `GITHUB_TOKEN` is enough. On a development machine, create a *classic* personal access token with only `read:packages` (fine-grained tokens do not work with the Maven registry) and put it in your user-level `~/.gradle/gradle.properties`, never in a project's file:
+
+```properties
+gpr.user=<your GitHub login>
+gpr.key=ghp_...
+```
 
 ## Errors
 
